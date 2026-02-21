@@ -13,29 +13,29 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('inventory_stock_movements', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Inventory Item Association
-            $table->foreignId('inventory_item_id')
-                  ->constrained()
-                  ->cascadeOnDelete();
+            $table->uuid('inventory_item_id')
+                ->constrained()
+                ->cascadeOnDelete();
 
             // Branch Association
-            $table->foreignId('branch_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('branch_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
             // User Associations
-            $table->foreignId('created_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('created_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
-            $table->foreignId('approved_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('approved_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             // Movement Details
             $table->enum('movement_type', [
@@ -66,15 +66,15 @@ return new class extends Migration
             $table->unsignedBigInteger('reference_id')->nullable();
 
             // For Transfers
-            $table->foreignId('from_branch_id')
-                  ->nullable()
-                  ->constrained('branches')
-                  ->nullOnDelete();
+            $table->uuid('from_branch_id')
+                ->nullable()
+                ->constrained('branches')
+                ->nullOnDelete();
 
-            $table->foreignId('to_branch_id')
-                  ->nullable()
-                  ->constrained('branches')
-                  ->nullOnDelete();
+            $table->uuid('to_branch_id')
+                ->nullable()
+                ->constrained('branches')
+                ->nullOnDelete();
 
             // Reason & Notes
             $table->string('reason')->nullable();

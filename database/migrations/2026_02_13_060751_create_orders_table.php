@@ -20,25 +20,25 @@ return new class extends Migration
             $table->string('invoice_number')->unique()->nullable(); // Invoice number
 
             // Branch Association (CRITICAL)
-            $table->foreignId('branch_id')
+            $table->uuid('branch_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
             // Customer Association
-            $table->foreignId('customer_id')
+            $table->uuid('customer_id')
                 ->nullable()
                 ->constrained()
                 ->nullOnDelete();
 
             // Staff Associations
-            $table->foreignId('created_by')
+            $table->uuid('created_by')
                 ->constrained('users');
 
-            $table->foreignId('updated_by')
+            $table->uuid('updated_by')
                 ->nullable()
                 ->constrained('users');
 
-            $table->foreignId('assigned_to') // Staff assigned to process this order
+            $table->uuid('assigned_to') // Staff assigned to process this order
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
@@ -46,7 +46,7 @@ return new class extends Migration
             // Order Status
             $table->string('status')->default('pending'); // pending, processing, ready, delivered, cancelled, completed
             $table->timestamp('status_updated_at')->nullable();
-            $table->foreignId('status_updated_by')
+            $table->uuid('status_updated_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
@@ -110,12 +110,12 @@ return new class extends Migration
             $table->boolean('is_insured')->default(false);
             $table->boolean('requires_approval')->default(false);
             $table->boolean('is_approved')->default(false);
-            $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->uuid('approved_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('approved_at')->nullable();
 
             $table->boolean('is_flagged')->default(false);
             $table->string('flag_reason')->nullable();
-            $table->foreignId('flagged_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->uuid('flagged_by')->nullable()->constrained('users')->nullOnDelete();
 
             // Audit Trail
             $table->json('status_history')->nullable(); // Track status changes

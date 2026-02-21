@@ -14,10 +14,12 @@ use App\Traits\HasBranchRoles;
 use App\Models\Branch;
 use App\Models\UserBranchRole;
 use Illuminate\Support\Collection;
+use App\Traits\HasUuid;
+use Illuminate\Testing\Fluent\Concerns\Has;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasRoles, HasBranchRoles;
+    use HasFactory, Notifiable, HasRoles, HasBranchRoles, HasUuid;
 
     /**
      * The attributes that are mass assignable.
@@ -142,16 +144,23 @@ class User extends Authenticatable
 
     /**
      * Assign role to user in a specific branch
+     *
+     * @param \Spatie\Permission\Models\Role|string|int $role
+     * @param \App\Models\Branch|null $branch
+     * @param array|null $options
+     * @return \App\Models\UserBranchRole
      */
     public function assignBranchRole(Role|string|int $role, ?Branch $branch = null, ?array $options = []): UserBranchRole
     {
         $roleModel = $role instanceof Role ? $role : null;
 
         if (!$roleModel && is_string($role)) {
+            /** @var \Spatie\Permission\Models\Role|null $roleModel */
             $roleModel = Role::where('name', $role)->first();
         }
 
         if (!$roleModel && is_numeric($role)) {
+            /** @var \Spatie\Permission\Models\Role|null $roleModel */
             $roleModel = Role::find($role);
         }
 
@@ -160,7 +169,7 @@ class User extends Authenticatable
         }
 
         return $this->branchRoles()->create([
-            'role_id' => $roleModel->id,
+            'role_id' => $roleModel->id, // IDE should now recognize this
             'branch_id' => $branch?->id,
             'assigned_by' => auth()->id(),
             'assigned_at' => now(),
@@ -341,7 +350,7 @@ class User extends Authenticatable
      * @param \App\Models\Branch|null $branch
      * @return bool
      */
-    public function switchToBranch(?Branch $branch = null): bool // 🔴 FIX: Added = null and ? before Branch
+    public function switchToBranch(?Branch $branch = null): bool
     {
         if (!$branch) {
             session()->forget(['current_branch_id', 'current_branch']);
@@ -374,6 +383,7 @@ class User extends Authenticatable
                 return;
             }
 
+            /** @var \App\Models\User|null $user */
             $user = auth()->user();
 
             if (!$user) {

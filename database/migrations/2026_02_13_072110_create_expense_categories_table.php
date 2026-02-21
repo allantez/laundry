@@ -13,13 +13,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('expense_categories', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Branch Association (if categories are branch-specific)
-            $table->foreignId('branch_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('branch_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
             // Basic Information
             $table->string('name');
@@ -28,10 +28,10 @@ return new class extends Migration
             $table->text('description')->nullable();
 
             // Category Hierarchy
-            $table->foreignId('parent_id')
-                  ->nullable()
-                  ->constrained('expense_categories')
-                  ->nullOnDelete();
+            $table->uuid('parent_id')
+                ->nullable()
+                ->constrained('expense_categories')
+                ->nullOnDelete();
 
             $table->string('path')->nullable(); // Materialized path for hierarchy
 
@@ -71,10 +71,10 @@ return new class extends Migration
             // Approval Workflow
             $table->boolean('requires_approval')->default(false);
             $table->decimal('approval_threshold', 12, 2)->nullable(); // Amount requiring approval
-            $table->foreignId('approver_id')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('approver_id')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             // Display Options
             $table->string('color')->nullable(); // For UI display

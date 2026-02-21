@@ -11,8 +11,8 @@ return new class extends Migration {
             $table->id();
             $table->uuid('uuid')->unique();
 
-            $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('order_id')->constrained()->cascadeOnDelete();
+            $table->uuid('branch_id')->constrained()->cascadeOnDelete();
+            $table->uuid('order_id')->constrained()->cascadeOnDelete();
 
             $table->string('invoice_number')->unique();
             $table->date('issue_date');
@@ -27,7 +27,7 @@ return new class extends Migration {
                 ->default('draft')
                 ->index();
 
-            $table->foreignId('created_by')->nullable()->constrained('users');
+            $table->uuid('created_by')->nullable()->constrained('users');
 
             $table->timestamps();
             $table->softDeletes();

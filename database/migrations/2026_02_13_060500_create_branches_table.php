@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('branches', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('name');
             $table->string('code')->unique();
             $table->string('email')->nullable();
@@ -32,9 +32,6 @@ return new class extends Migration
             $table->timestamp('closed_at')->nullable();
             $table->json('settings')->nullable();
             $table->text('notes')->nullable();
-
-            // 🔴 REMOVE manager_id from here - will add in separate migration
-            // $table->foreignId('manager_id')->nullable()->constrained('users')->nullOnDelete();
 
             $table->timestamps();
             $table->softDeletes();

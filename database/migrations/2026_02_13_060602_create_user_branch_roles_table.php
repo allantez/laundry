@@ -13,12 +13,12 @@ return new class extends Migration
             $table->id();
 
             // User assignment (who)
-            $table->foreignId('user_id')
+            $table->uuid('user_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
             // Branch assignment (where)
-            $table->foreignId('branch_id')
+            $table->uuid('branch_id')
                 ->nullable() // NULL = Global/Super Admin access
                 ->constrained()
                 ->cascadeOnDelete();
@@ -29,7 +29,7 @@ return new class extends Migration
                 ->cascadeOnDelete();
 
             // Assignment metadata
-            $table->foreignId('assigned_by')
+            $table->uuid('assigned_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();

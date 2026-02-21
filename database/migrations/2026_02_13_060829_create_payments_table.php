@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('payments', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             /**
              * Identification
@@ -20,31 +20,31 @@ return new class extends Migration
             /**
              * Relationships
              */
-            $table->foreignId('order_id')
+            $table->uuid('order_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->foreignId('customer_id')
+            $table->uuid('customer_id')
                 ->nullable()
                 ->constrained()
                 ->nullOnDelete();
 
-            $table->foreignId('branch_id')
+            $table->uuid('branch_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
             /**
              * Audit
              */
-            $table->foreignId('created_by')
+            $table->uuid('created_by')
                 ->constrained('users');
 
-            $table->foreignId('updated_by')
+            $table->uuid('updated_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
 
-            $table->foreignId('confirmed_by')
+            $table->uuid('confirmed_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
@@ -108,7 +108,7 @@ return new class extends Migration
              * Refund Handling
              * (Self-referencing instead of refund fields everywhere)
              */
-            $table->foreignId('parent_payment_id')
+            $table->uuid('parent_payment_id')
                 ->nullable()
                 ->constrained('payments')
                 ->nullOnDelete();
@@ -118,7 +118,7 @@ return new class extends Migration
              */
             $table->boolean('is_reconciled')->default(false);
             $table->timestamp('reconciled_at')->nullable();
-            $table->foreignId('reconciled_by')
+            $table->uuid('reconciled_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
@@ -135,7 +135,7 @@ return new class extends Migration
              */
             $table->boolean('is_flagged')->default(false);
             $table->string('flag_reason')->nullable();
-            $table->foreignId('flagged_by')
+            $table->uuid('flagged_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();

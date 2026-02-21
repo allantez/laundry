@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('expenses', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Expense Identification
             $table->string('expense_number')->unique(); // Human-readable expense number
@@ -21,33 +21,33 @@ return new class extends Migration
             $table->string('invoice_number')->nullable();
 
             // Branch Association (CRITICAL)
-            $table->foreignId('branch_id')
-                  ->constrained()
-                  ->cascadeOnDelete();
+            $table->uuid('branch_id')
+                ->constrained()
+                ->cascadeOnDelete();
 
             // Category Association
-            $table->foreignId('expense_category_id')
-                  ->constrained()
-                  ->cascadeOnDelete();
+            $table->uuid('expense_category_id')
+                ->constrained()
+                ->cascadeOnDelete();
 
             // Supplier Association (MOVED AFTER expense_category_id as requested)
-            $table->foreignId('supplier_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('supplier_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
             // User Associations
-            $table->foreignId('created_by')
-                  ->constrained('users');
+            $table->uuid('created_by')
+                ->constrained('users');
 
-            $table->foreignId('updated_by')
-                  ->nullable()
-                  ->constrained('users');
+            $table->uuid('updated_by')
+                ->nullable()
+                ->constrained('users');
 
-            $table->foreignId('approved_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('approved_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             // Basic Expense Details
             $table->string('title');
@@ -122,10 +122,10 @@ return new class extends Migration
 
             // For Inventory Purchases
             $table->boolean('is_inventory_purchase')->default(false);
-            $table->foreignId('inventory_item_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('inventory_item_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
             $table->decimal('quantity_purchased', 12, 2)->nullable();
             $table->decimal('unit_cost', 12, 2)->nullable();
 
@@ -135,10 +135,10 @@ return new class extends Migration
             $table->decimal('units_consumed', 12, 2)->nullable();
 
             // For Staff Expenses
-            $table->foreignId('staff_id')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('staff_id')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
             $table->enum('expense_type', [
                 'salary',
                 'advance',
@@ -151,10 +151,10 @@ return new class extends Migration
             // Reconciliation
             $table->boolean('is_reconciled')->default(false);
             $table->timestamp('reconciled_at')->nullable();
-            $table->foreignId('reconciled_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('reconciled_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             // Notes & Metadata
             $table->text('notes')->nullable();
@@ -165,10 +165,10 @@ return new class extends Migration
             // Flags
             $table->boolean('is_flagged')->default(false);
             $table->string('flag_reason')->nullable();
-            $table->foreignId('flagged_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('flagged_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             // Timestamps
             $table->timestamps();

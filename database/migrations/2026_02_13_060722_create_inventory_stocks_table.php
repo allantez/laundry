@@ -10,18 +10,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('inventory_stocks', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Inventory Item Association
-            $table->foreignId('inventory_item_id')
-                  ->constrained()
-                  ->cascadeOnDelete();
+            $table->uuid('inventory_item_id')
+                ->constrained()
+                ->cascadeOnDelete();
 
             // Branch Association
-            $table->foreignId('branch_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('branch_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
             // Batch/Lot Information
             $table->string('batch_number', 50)->nullable(); // 🔴 Added length limit
@@ -54,23 +54,28 @@ return new class extends Migration
 
             // Status
             $table->enum('status', [
-                'available', 'reserved', 'quarantined', 'expired',
-                'damaged', 'returned', 'in_transit'
+                'available',
+                'reserved',
+                'quarantined',
+                'expired',
+                'damaged',
+                'returned',
+                'in_transit'
             ])->default('available');
 
             // Quality Control
             $table->boolean('needs_inspection')->default(false);
             $table->boolean('inspected')->default(false);
-            $table->foreignId('inspected_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->uuid('inspected_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('inspected_at')->nullable();
             $table->string('quality_grade', 10)->nullable(); // 🔴 Added length limit
             $table->text('inspection_notes')->nullable();
 
             // Supplier Information
-            $table->foreignId('supplier_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('supplier_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
             $table->string('supplier_batch_ref', 100)->nullable(); // 🔴 Added length limit
 

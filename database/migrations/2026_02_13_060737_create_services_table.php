@@ -13,10 +13,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('services', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Branch Association (if services are branch-specific)
-            $table->foreignId('branch_id')
+            $table->uuid('branch_id')
                 ->nullable()
                 ->constrained()
                 ->nullOnDelete();
@@ -80,7 +80,7 @@ return new class extends Migration
 
             // Inventory Integration
             $table->boolean('track_inventory')->default(false);
-            $table->foreignId('inventory_item_id')->nullable()->constrained()->nullOnDelete();
+            $table->uuid('inventory_item_id')->nullable()->constrained()->nullOnDelete();
             $table->decimal('inventory_quantity_per_unit', 10, 2)->nullable(); // e.g., 0.5L detergent per kg
 
             // Timestamps

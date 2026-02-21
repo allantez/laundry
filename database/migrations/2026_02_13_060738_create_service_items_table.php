@@ -13,46 +13,53 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('service_items', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Service Association
-            $table->foreignId('service_id')
-                  ->constrained()
-                  ->cascadeOnDelete();
+            $table->uuid('service_id');
+            $table->foreign('service_id')
+                ->references('id')
+                ->on('services')
+                ->cascadeOnDelete();
 
-            // Branch Association (optional - can override parent service)
-            $table->foreignId('branch_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            // Branch Association
+            $table->uuid('branch_id')->nullable();
+            $table->foreign('branch_id')
+                ->references('id')
+                ->on('branches')
+                ->nullOnDelete();
 
             // Basic Information
             $table->string('name');
             $table->string('slug')->nullable();
-            $table->string('code')->nullable(); // Item code (e.g., WSH-SHIRT, DRY-SUIT)
+            $table->string('code', 50)->nullable(); // 🔴 ADD LENGTH
             $table->text('description')->nullable();
-            $table->string('short_description')->nullable();
+            $table->string('short_description', 255)->nullable(); // 🔴 ADD LENGTH
 
-            // Item Details
-            $table->string('item_type'); // shirt, pants, dress, suit, bedding, etc.
-            $table->string('fabric_type')->nullable(); // cotton, silk, wool, synthetic, etc.
-            $table->string('color')->nullable();
-            $table->string('size')->nullable(); // S, M, L, XL, or numeric
+            // Item Details - 🔴 ADD LENGTH LIMITS TO ALL
+            $table->string('item_type', 50); // 🔴 LENGTH 50
+            $table->string('fabric_type', 50)->nullable(); // 🔴 LENGTH 50
+            $table->string('color', 30)->nullable(); // 🔴 LENGTH 30
+            $table->string('size', 20)->nullable(); // 🔴 LENGTH 20
 
             // Pricing
             $table->decimal('base_price', 10, 2)->default(0);
             $table->decimal('minimum_charge', 10, 2)->nullable();
             $table->enum('pricing_model', ['fixed', 'per_item', 'per_set'])->default('fixed');
-            $table->json('price_modifiers')->nullable(); // For special handling (e.g., stain removal +$2)
+            $table->json('price_modifiers')->nullable();
 
             // Operational Settings
             $table->boolean('is_active')->default(true);
-            $table->integer('estimated_duration')->nullable(); // In minutes (overrides service duration)
-            $table->json('special_instructions')->nullable(); // Special handling instructions
+            $table->integer('estimated_duration')->nullable();
+            $table->json('special_instructions')->nullable();
 
             // Inventory Integration
             $table->boolean('track_inventory')->default(false);
-            $table->foreignId('inventory_item_id')->nullable()->constrained()->nullOnDelete();
+            $table->uuid('inventory_item_id')->nullable();
+            $table->foreign('inventory_item_id')
+                ->references('id')
+                ->on('inventory_items')
+                ->nullOnDelete();
             $table->decimal('inventory_quantity_per_unit', 10, 2)->nullable();
 
             // Display Options
@@ -62,33 +69,33 @@ return new class extends Migration
             $table->decimal('special_handling_fee', 10, 2)->nullable();
 
             // Images
-            $table->string('icon')->nullable();
-            $table->string('image')->nullable();
+            $table->string('icon', 100)->nullable(); // 🔴 ADD LENGTH
+            $table->string('image', 255)->nullable(); // 🔴 ADD LENGTH
             $table->json('gallery')->nullable();
 
             // Additional Info
-            $table->json('care_instructions')->nullable(); // Care labels and instructions
-            $table->json('restrictions')->nullable(); // Items not accepted
-            $table->json('add_ons_available')->nullable(); // Available add-ons for this item
+            $table->json('care_instructions')->nullable();
+            $table->json('restrictions')->nullable();
+            $table->json('add_ons_available')->nullable();
 
             // Timestamps
             $table->timestamps();
             $table->softDeletes();
 
-            // Indexes for performance
-            $table->index('service_id');
-            $table->index('branch_id');
-            $table->index('item_type');
-            $table->index('is_active');
-            $table->index('is_popular');
-            $table->index('sort_order');
-            $table->index('code');
-            $table->index(['service_id', 'item_type', 'is_active']);
-            $table->index(['service_id', 'is_popular']);
-            $table->index(['branch_id', 'is_active']);
+            // Indexes
+            $table->index('service_id', 'si_service_idx');
+            $table->index('branch_id', 'si_branch_idx');
+            $table->index('item_type', 'si_type_idx');
+            $table->index('is_active', 'si_active_idx');
+            $table->index('is_popular', 'si_popular_idx');
+            $table->index('sort_order', 'si_sort_idx');
+            $table->index('code', 'si_code_idx');
+            $table->index(['service_id', 'item_type', 'is_active'], 'si_service_type_active_idx');
+            $table->index(['service_id', 'is_popular'], 'si_service_popular_idx');
+            $table->index(['branch_id', 'is_active'], 'si_branch_active_idx');
 
-            // Unique constraint
-            $table->unique(['service_id', 'item_type', 'size', 'fabric_type'], 'service_item_unique');
+            // 🔴 FIXED UNIQUE CONSTRAINT - Now within limits
+            $table->unique(['service_id', 'item_type', 'size', 'fabric_type'], 'si_unique');
         });
     }
 

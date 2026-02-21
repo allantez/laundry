@@ -13,13 +13,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('customers', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Branch Association (Critical for multi-branch)
-            $table->foreignId('branch_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('branch_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
             // Personal Information
             $table->string('first_name');
@@ -35,7 +35,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->boolean('is_verified')->default(false);
             $table->timestamp('verified_at')->nullable();
-            $table->foreignId('verified_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->uuid('verified_by')->nullable()->constrained('users')->nullOnDelete();
 
             // Loyalty & Points
             $table->integer('loyalty_points')->default(0);

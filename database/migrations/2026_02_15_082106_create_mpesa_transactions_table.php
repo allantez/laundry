@@ -8,10 +8,10 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('mpesa_transactions', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
-            $table->foreignId('order_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('payment_id')->nullable()->constrained()->nullOnDelete();
+            $table->uuid('order_id')->nullable()->constrained()->nullOnDelete();
+            $table->uuid('payment_id')->nullable()->constrained()->nullOnDelete();
 
             $table->string('merchant_request_id')->nullable()->index();
             $table->string('checkout_request_id')->nullable()->index();
@@ -29,6 +29,12 @@ return new class extends Migration {
             $table->json('raw_payload')->nullable();
 
             $table->timestamps();
+            $table->softDeletes();
+
+            // Indexes
+            $table->index('order_id');
+            $table->index('payment_id');
+            $table->index('phone_number');
         });
     }
 
@@ -37,4 +43,3 @@ return new class extends Migration {
         Schema::dropIfExists('mpesa_transactions');
     }
 };
-

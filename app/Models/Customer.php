@@ -212,9 +212,11 @@ class Customer extends Model
 
     public function getAgeAttribute(): ?int
     {
-        return $this->date_of_birth
-            ? Carbon::parse($this->date_of_birth)->age
-            : null;
+        if (!$this->date_of_birth) {
+            return null;
+        }
+        // Need to add: use Carbon\Carbon;
+        return Carbon::parse($this->date_of_birth)->age;
     }
 
     public function getAverageRatingAttribute(): ?float

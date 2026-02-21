@@ -13,41 +13,41 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('customer_feedback', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Feedback Identification
             $table->string('feedback_number')->unique(); // Human-readable feedback number
 
             // Core Associations
-            $table->foreignId('customer_id')
-                  ->constrained()
-                  ->cascadeOnDelete();
+            $table->uuid('customer_id')
+                ->constrained()
+                ->cascadeOnDelete();
 
-            $table->foreignId('order_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('order_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
-            $table->foreignId('branch_id')
-                  ->constrained()
-                  ->cascadeOnDelete();
+            $table->uuid('branch_id')
+                ->constrained()
+                ->cascadeOnDelete();
 
             // Service/Item Associations (optional - for specific service feedback)
-            $table->foreignId('service_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('service_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
-            $table->foreignId('service_item_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('service_item_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
             // Staff Associations (feedback about specific staff)
-            $table->foreignId('staff_id')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('staff_id')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             // Rating (1-5 scale)
             $table->tinyInteger('rating')->unsigned(); // 1 to 5
@@ -73,18 +73,18 @@ return new class extends Migration
 
             // Response/Resolution
             $table->text('staff_response')->nullable();
-            $table->foreignId('responded_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('responded_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
             $table->timestamp('responded_at')->nullable();
 
             $table->boolean('is_resolved')->default(false);
             $table->timestamp('resolved_at')->nullable();
-            $table->foreignId('resolved_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('resolved_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
             $table->text('resolution_notes')->nullable();
 
             // Status
@@ -103,19 +103,19 @@ return new class extends Migration
 
             // Verification
             $table->boolean('is_verified')->default(false); // Verified as genuine
-            $table->foreignId('verified_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('verified_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
             $table->timestamp('verified_at')->nullable();
 
             // Flags
             $table->boolean('is_flagged')->default(false);
             $table->string('flag_reason')->nullable();
-            $table->foreignId('flagged_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('flagged_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             // Source Information
             $table->enum('source', [
@@ -143,15 +143,15 @@ return new class extends Migration
             $table->json('metadata')->nullable(); // Browser, device, location, etc.
 
             // User Associations
-            $table->foreignId('created_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('created_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
-            $table->foreignId('updated_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('updated_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             // Timestamps
             $table->timestamps();

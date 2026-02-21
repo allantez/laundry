@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('user_documents', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')
+            $table->uuid('user_id')
                 ->constrained()
                 ->cascadeOnDelete();
             $table->string('document_type');
@@ -25,6 +25,7 @@ return new class extends Migration
 
             $table->timestamp('verified_at')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             // Indexes
             $table->index('user_id');

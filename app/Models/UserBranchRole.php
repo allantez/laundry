@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Spatie\Permission\Models\Role; // 🔴 IMPORTANT: Add this!
+use Spatie\Permission\Models\Role;
 
 class UserBranchRole extends Model
 {
@@ -20,12 +20,15 @@ class UserBranchRole extends Model
     protected $casts = [
         'assigned_at' => 'datetime',
         'expires_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     /**
      * Get the user that owns this role assignment.
      */
-    public function user(): BelongsTo // 🔴 This was missing!
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
@@ -43,7 +46,7 @@ class UserBranchRole extends Model
      */
     public function role(): BelongsTo
     {
-        return $this->belongsTo(Role::class); // Now Role is imported
+        return $this->belongsTo(Role::class);
     }
 
     /**
@@ -52,5 +55,13 @@ class UserBranchRole extends Model
     public function assignedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    /**
+     * Check if assignment is active (not expired).
+     */
+    public function isActive(): bool
+    {
+        return !$this->expires_at || $this->expires_at->isFuture();
     }
 }

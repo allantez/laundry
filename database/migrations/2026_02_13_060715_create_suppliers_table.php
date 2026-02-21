@@ -13,13 +13,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('suppliers', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Branch Association (which branch does this supplier serve)
-            $table->foreignId('branch_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('branch_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
             // Basic Information
             $table->string('name');
@@ -81,7 +81,7 @@ return new class extends Migration
             // Status
             $table->boolean('is_active')->default(true);
             $table->boolean('is_approved')->default(false);
-            $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->uuid('approved_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('approved_at')->nullable();
 
             // Notes & Metadata

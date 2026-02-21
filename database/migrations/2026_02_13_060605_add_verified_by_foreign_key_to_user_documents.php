@@ -9,10 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('user_documents', function (Blueprint $table) {
-            $table->foreign('verified_by')
-                ->references('id')
-                ->on('users')
-                ->nullOnDelete();
+            // $table->uuid('verified_by')
+            //     ->references('id')
+            //     ->on('users')
+            //     ->nullOnDelete();
         });
     }
 

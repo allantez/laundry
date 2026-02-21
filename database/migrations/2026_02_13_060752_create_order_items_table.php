@@ -13,29 +13,29 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('order_items', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Order Association
-            $table->foreignId('order_id')
-                  ->constrained()
-                  ->cascadeOnDelete();
+            $table->uuid('order_id')
+                ->constrained()
+                ->cascadeOnDelete();
 
             // Service/Item Associations
-            $table->foreignId('service_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('service_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
-            $table->foreignId('service_item_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('service_item_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
             // Branch Association (for reporting)
-            $table->foreignId('branch_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('branch_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
             // Item Details
             $table->string('name'); // Snapshot of item name at time of order
@@ -72,16 +72,16 @@ return new class extends Migration
             // Status Tracking (per item)
             $table->string('status')->default('pending'); // pending, processing, completed, cancelled
             $table->timestamp('status_updated_at')->nullable();
-            $table->foreignId('status_updated_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('status_updated_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             // Processing Details
-            $table->foreignId('assigned_to')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('assigned_to')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             $table->timestamp('started_at')->nullable();
             $table->timestamp('completed_at')->nullable();
@@ -89,13 +89,13 @@ return new class extends Migration
             // Quality Control
             $table->boolean('requires_inspection')->default(false);
             $table->boolean('inspected')->default(false);
-            $table->foreignId('inspected_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->uuid('inspected_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('inspected_at')->nullable();
             $table->text('inspection_notes')->nullable();
 
             // Inventory Tracking
             $table->boolean('track_inventory')->default(false);
-            $table->foreignId('inventory_item_id')->nullable()->constrained()->nullOnDelete();
+            $table->uuid('inventory_item_id')->nullable()->constrained()->nullOnDelete();
             $table->decimal('inventory_quantity_used', 10, 2)->nullable();
             $table->boolean('inventory_deducted')->default(false);
 

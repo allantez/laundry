@@ -13,18 +13,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('inventory_alerts', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Inventory Item Association
-            $table->foreignId('inventory_item_id')
-                  ->constrained()
-                  ->cascadeOnDelete();
+            $table->uuid('inventory_item_id')
+                ->constrained()
+                ->cascadeOnDelete();
 
             // Branch Association
-            $table->foreignId('branch_id')
-                  ->nullable()
-                  ->constrained()
-                  ->nullOnDelete();
+            $table->uuid('branch_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
             // Alert Type
             $table->enum('type', [
@@ -44,7 +44,7 @@ return new class extends Migration
 
             // Severity Level
             $table->enum('severity', ['info', 'warning', 'critical', 'emergency'])
-                  ->default('warning');
+                ->default('warning');
 
             // Alert Details
             $table->string('title');
@@ -80,17 +80,17 @@ return new class extends Migration
 
             // Acknowledgment
             $table->timestamp('acknowledged_at')->nullable();
-            $table->foreignId('acknowledged_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('acknowledged_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             // Resolution
             $table->timestamp('resolved_at')->nullable();
-            $table->foreignId('resolved_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('resolved_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             $table->text('resolution_notes')->nullable();
             $table->enum('resolution_action', [
@@ -104,10 +104,10 @@ return new class extends Migration
 
             // Dismissal
             $table->timestamp('dismissed_at')->nullable();
-            $table->foreignId('dismissed_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('dismissed_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             $table->text('dismissal_reason')->nullable();
 
@@ -117,20 +117,20 @@ return new class extends Migration
             $table->integer('notification_count')->default(0);
 
             // Assignment
-            $table->foreignId('assigned_to')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('assigned_to')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             $table->timestamp('assigned_at')->nullable();
 
             // Escalation
             $table->boolean('is_escalated')->default(false);
             $table->timestamp('escalated_at')->nullable();
-            $table->foreignId('escalated_to')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+            $table->uuid('escalated_to')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             // Comments/Notes
             $table->text('comments')->nullable();

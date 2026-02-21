@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('user_addresses', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')
+            $table->uuid('id')->primary();
+            $table->uuid('user_id')
                 ->constrained()
                 ->cascadeOnDelete();
             $table->string('address_type')->default('home');

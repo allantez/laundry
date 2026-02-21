@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('petty_cashes', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Fund Identification
             $table->string('fund_number')->unique(); // Human-readable fund number
@@ -21,12 +21,12 @@ return new class extends Migration
             $table->string('code')->unique(); // Short code (e.g., PC001, PC-MAIN)
 
             // Branch Association
-            $table->foreignId('branch_id')
+            $table->uuid('branch_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
             // Custodian (person responsible)
-            $table->foreignId('custodian_id')
+            $table->uuid('custodian_id')
                 ->constrained('users')
                 ->cascadeOnDelete();
 
@@ -71,7 +71,7 @@ return new class extends Migration
             // Approval Requirements
             $table->boolean('requires_approval')->default(false);
             $table->decimal('approval_threshold', 12, 2)->nullable(); // Amount requiring approval
-            $table->foreignId('approver_id')
+            $table->uuid('approver_id')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
@@ -87,7 +87,7 @@ return new class extends Migration
 
             // Audit Information
             $table->timestamp('last_audited_at')->nullable();
-            $table->foreignId('last_audited_by')
+            $table->uuid('last_audited_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
@@ -120,7 +120,7 @@ return new class extends Migration
 
             // Transaction Identification
             $table->string('transaction_number')->unique();
-            $table->foreignId('petty_cash_id')
+            $table->uuid('petty_cash_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
@@ -145,7 +145,7 @@ return new class extends Migration
             $table->timestamp('recorded_at')->useCurrent();
 
             // Category (if disbursement)
-            $table->foreignId('expense_category_id')
+            $table->uuid('expense_category_id')
                 ->nullable()
                 ->constrained()
                 ->nullOnDelete();
@@ -170,7 +170,7 @@ return new class extends Migration
                 'approved',
                 'rejected'
             ])->default('approved');
-            $table->foreignId('approved_by')
+            $table->uuid('approved_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
@@ -182,10 +182,10 @@ return new class extends Migration
             $table->json('attachments')->nullable();
 
             // User Associations
-            $table->foreignId('created_by')
+            $table->uuid('created_by')
                 ->constrained('users');
 
-            $table->foreignId('updated_by')
+            $table->uuid('updated_by')
                 ->nullable()
                 ->constrained('users');
 

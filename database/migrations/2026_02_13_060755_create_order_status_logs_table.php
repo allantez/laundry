@@ -10,7 +10,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('order_status_logs', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->uuid('uuid')->unique();
             $table->uuid('order_id')->constrained()->cascadeOnDelete();
             $table->string('old_status')->nullable();
             $table->string('new_status');

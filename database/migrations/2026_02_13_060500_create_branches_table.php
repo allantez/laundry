@@ -10,7 +10,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('branches', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->uuid('uuid')->unique();
             $table->string('name');
             $table->string('code')->unique();
             $table->string('email')->nullable();

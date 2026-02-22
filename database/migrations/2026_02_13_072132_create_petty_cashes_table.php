@@ -13,7 +13,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('petty_cashes', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->uuid('uuid')->unique();
 
             // Fund Identification
             $table->string('fund_number')->unique(); // Human-readable fund number
@@ -21,7 +22,7 @@ return new class extends Migration
             $table->string('code')->unique(); // Short code (e.g., PC001, PC-MAIN)
 
             // Branch Association
-            $table->uuid('branch_id')
+            $table->foreignId('branch_id')
                 ->constrained()
                 ->cascadeOnDelete();
 

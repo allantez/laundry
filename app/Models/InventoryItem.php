@@ -9,10 +9,17 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use App\Traits\HasUuid;
 
 class InventoryItem extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasUuid;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
 
     /**
      * The attributes that are mass assignable.
@@ -295,13 +302,13 @@ class InventoryItem extends Model
     {
         return $query->where(function ($q) use ($search) {
             $q->where('name', 'like', "%{$search}%")
-              ->orWhere('sku', 'like', "%{$search}%")
-              ->orWhere('barcode', 'like', "%{$search}%")
-              ->orWhere('description', 'like', "%{$search}%")
-              ->orWhere('brand', 'like', "%{$search}%")
-              ->orWhere('category', 'like', "%{$search}%")
-              ->orWhere('batch_number', 'like', "%{$search}%")
-              ->orWhere('lot_number', 'like', "%{$search}%");
+                ->orWhere('sku', 'like', "%{$search}%")
+                ->orWhere('barcode', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%")
+                ->orWhere('brand', 'like', "%{$search}%")
+                ->orWhere('category', 'like', "%{$search}%")
+                ->orWhere('batch_number', 'like', "%{$search}%")
+                ->orWhere('lot_number', 'like', "%{$search}%");
         });
     }
 

@@ -3,8 +3,11 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use App\Models\Branch;
 use App\Models\User;
 
@@ -12,53 +15,30 @@ class RolePermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        // Reset cached roles and permissions
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // =========================================================================
-        // CREATE PERMISSIONS
-        // =========================================================================
+        /*
+        |--------------------------------------------------------------------------
+        | PERMISSIONS
+        |--------------------------------------------------------------------------
+        */
+
         $permissions = [
-            // Branch Management
-            'view branches', 'create branches', 'edit branches', 'delete branches',
-
-            // User Management
-            'view users', 'create users', 'edit users', 'delete users',
-            'assign roles', 'revoke roles',
-
-            // Role Management
-            'view roles', 'create roles', 'edit roles', 'delete roles',
-
-            // Customer Management
-            'view customers', 'create customers', 'edit customers', 'delete customers',
-
-            // Service Management
-            'view services', 'create services', 'edit services', 'delete services',
-
-            // Order Management
-            'view orders', 'create orders', 'edit orders', 'delete orders',
-            'process orders', 'complete orders', 'cancel orders',
-            'assign orders',
-
-            // Payment Management
-            'view payments', 'create payments', 'edit payments', 'delete payments',
-            'refund payments',
-
-            // Inventory Management
-            'view inventory', 'create inventory', 'edit inventory', 'delete inventory',
-            'adjust stock', 'view stock movements',
-
-            // Expense Management
-            'view expenses', 'create expenses', 'edit expenses', 'delete expenses',
-
-            // Petty Cash Management
-            'view petty cash', 'create petty cash', 'edit petty cash', 'delete petty cash',
-            'disburse petty cash', 'replenish petty cash',
-
-            // Reports
-            'view reports', 'export reports', 'view analytics',
-
-            // Dashboard
+            'view branches','create branches','edit branches','delete branches',
+            'view users','create users','edit users','delete users',
+            'assign roles','revoke roles',
+            'view roles','create roles','edit roles','delete roles',
+            'view customers','create customers','edit customers','delete customers',
+            'view services','create services','edit services','delete services',
+            'view orders','create orders','edit orders','delete orders',
+            'process orders','complete orders','cancel orders','assign orders',
+            'view payments','create payments','edit payments','delete payments','refund payments',
+            'view inventory','create inventory','edit inventory','delete inventory',
+            'adjust stock','view stock movements',
+            'view expenses','create expenses','edit expenses','delete expenses',
+            'view petty cash','create petty cash','edit petty cash','delete petty cash',
+            'disburse petty cash','replenish petty cash',
+            'view reports','export reports','view analytics',
             'view dashboard',
         ];
 
@@ -69,169 +49,158 @@ class RolePermissionSeeder extends Seeder
             ]);
         }
 
-        // =========================================================================
-        // CREATE ROLES
-        // =========================================================================
+        /*
+        |--------------------------------------------------------------------------
+        | ROLES
+        |--------------------------------------------------------------------------
+        */
 
-        // Super Admin - Global access, no branch restrictions
-        $superAdmin = Role::firstOrCreate([
-            'name' => 'Super Admin',
-            'guard_name' => 'web'
-        ]);
+        $superAdmin = Role::firstOrCreate(['name' => 'Super Admin']);
         $superAdmin->syncPermissions(Permission::all());
 
-        // Branch Manager - Full access within their branch
-        $branchManager = Role::firstOrCreate([
-            'name' => 'Branch Manager',
-            'guard_name' => 'web'
-        ]);
-        $branchManager->syncPermissions([
-            'view dashboard',
-            'view customers', 'create customers', 'edit customers',
-            'view services', 'create services', 'edit services',
-            'view orders', 'create orders', 'edit orders', 'process orders', 'complete orders', 'cancel orders', 'assign orders',
-            'view payments', 'create payments', 'edit payments', 'refund payments',
-            'view inventory', 'create inventory', 'edit inventory', 'adjust stock',
-            'view expenses', 'create expenses', 'edit expenses',
-            'view petty cash', 'create petty cash', 'edit petty cash', 'disburse petty cash', 'replenish petty cash',
-            'view reports', 'export reports',
-            'view users', 'edit users', 'assign roles', // Can manage branch staff
-        ]);
+        $branchManager = Role::firstOrCreate(['name' => 'Branch Manager']);
+        $cashier = Role::firstOrCreate(['name' => 'Cashier']);
+        $laundryStaff = Role::firstOrCreate(['name' => 'Laundry Staff']);
+        $driver = Role::firstOrCreate(['name' => 'Driver']);
+        $accountant = Role::firstOrCreate(['name' => 'Accountant']);
 
-        // Cashier - Payment and order creation
-        $cashier = Role::firstOrCreate([
-            'name' => 'Cashier',
-            'guard_name' => 'web'
-        ]);
-        $cashier->syncPermissions([
-            'view dashboard',
-            'view customers', 'create customers',
-            'view services',
-            'view orders', 'create orders', 'edit orders',
-            'view payments', 'create payments',
-            'view inventory',
-        ]);
+        /*
+        |--------------------------------------------------------------------------
+        | BRANCHES
+        |--------------------------------------------------------------------------
+        */
 
-        // Laundry Staff - Process orders
-        $laundryStaff = Role::firstOrCreate([
-            'name' => 'Laundry Staff',
-            'guard_name' => 'web'
-        ]);
-        $laundryStaff->syncPermissions([
-            'view dashboard',
-            'view orders', 'process orders', 'complete orders',
-            'view inventory', 'adjust stock',
-        ]);
+        $main = $this->createBranch('Main Branch', 'MAIN', 'Nairobi', true);
+        $west = $this->createBranch('Westlands Branch', 'WEST', 'Nairobi');
+        $karen = $this->createBranch('Karen Branch', 'KAREN', 'Nairobi');
+        $mombasa = $this->createBranch('Mombasa Branch', 'MSA', 'Mombasa');
 
-        // Driver - Handle deliveries
-        $driver = Role::firstOrCreate([
-            'name' => 'Driver',
-            'guard_name' => 'web'
-        ]);
-        $driver->syncPermissions([
-            'view dashboard',
-            'view orders', 'edit orders',
-        ]);
+        /*
+        |--------------------------------------------------------------------------
+        | USERS
+        |--------------------------------------------------------------------------
+        */
 
-        // Accountant - Handle finances
-        $accountant = Role::firstOrCreate([
-            'name' => 'Accountant',
-            'guard_name' => 'web'
-        ]);
-        $accountant->syncPermissions([
-            'view dashboard',
-            'view payments', 'edit payments', 'refund payments',
-            'view expenses', 'create expenses', 'edit expenses',
-            'view petty cash', 'create petty cash', 'edit petty cash',
-            'view reports', 'export reports',
-            'view inventory',
-        ]);
-
-        // =========================================================================
-        // CREATE SAMPLE USERS WITH BRANCH ASSIGNMENTS
-        // =========================================================================
-
-        // Create branches first
-        $branch1 = Branch::firstOrCreate([
-            'name' => 'Main Branch',
-            'code' => 'MAIN',
-            'city' => 'Nairobi',
-            'is_main_branch' => true,
-        ]);
-
-        $branch2 = Branch::firstOrCreate([
-            'name' => 'Westlands Branch',
-            'code' => 'WEST',
-            'city' => 'Nairobi',
-        ]);
-
-        // Super Admin (global)
-        $admin = User::firstOrCreate([
-            'email' => 'admin@laundry.com',
-        ], [
-            'name' => 'Super Administrator',
-            'password' => bcrypt('password'),
-            'branch_id' => $branch1->id,
-            'is_active' => true,
-        ]);
-
-        // Assign global role (branch_id = null)
+        // Super Admin
+        $admin = $this->createUser(
+            'Super Administrator',
+            'admin@laundry.com',
+            $main->id,
+            'Chief Executive Officer',
+            true
+        );
         $admin->assignBranchRole('Super Admin', null);
 
-        // Branch Manager for Main Branch
-        $manager1 = User::firstOrCreate([
-            'email' => 'manager.main@laundry.com',
-        ], [
-            'name' => 'Main Branch Manager',
-            'password' => bcrypt('password'),
-            'branch_id' => $branch1->id,
-            'is_active' => true,
-        ]);
-        $manager1->assignBranchRole('Branch Manager', $branch1);
+        // Branch Managers
+        $managerMain = $this->createUser(
+            'Main Branch Manager',
+            'manager.main@laundry.com',
+            $main->id,
+            'Branch Manager'
+        );
+        $managerMain->assignBranchRole('Branch Manager', $main);
 
-        // Branch Manager for Westlands
-        $manager2 = User::firstOrCreate([
-            'email' => 'manager.west@laundry.com',
-        ], [
-            'name' => 'Westlands Branch Manager',
-            'password' => bcrypt('password'),
-            'branch_id' => $branch2->id,
-            'is_active' => true,
-        ]);
-        $manager2->assignBranchRole('Branch Manager', $branch2);
+        $managerWest = $this->createUser(
+            'Westlands Manager',
+            'manager.west@laundry.com',
+            $west->id,
+            'Branch Manager'
+        );
+        $managerWest->assignBranchRole('Branch Manager', $west);
 
-        // Cashier for Main Branch
-        $cashier1 = User::firstOrCreate([
-            'email' => 'cashier.main@laundry.com',
-        ], [
-            'name' => 'Main Branch Cashier',
-            'password' => bcrypt('password'),
-            'branch_id' => $branch1->id,
-            'is_active' => true,
-        ]);
-        $cashier1->assignBranchRole('Cashier', $branch1);
+        // Cashiers
+        for ($i = 1; $i <= 2; $i++) {
+            $cashierUser = $this->createUser(
+                "Main Cashier $i",
+                "cashier{$i}@laundry.com",
+                $main->id,
+                'Cashier'
+            );
+            $cashierUser->assignBranchRole('Cashier', $main);
+        }
 
-        // Laundry Staff for both branches (user can work in multiple branches)
-        $staff1 = User::firstOrCreate([
-            'email' => 'staff@laundry.com',
-        ], [
-            'name' => 'Multi-Branch Staff',
-            'password' => bcrypt('password'),
-            'branch_id' => $branch1->id,
-            'is_active' => true,
-        ]);
-        $staff1->assignBranchRole('Laundry Staff', $branch1);
-        $staff1->assignBranchRole('Laundry Staff', $branch2); // Same role in both branches
+        // Laundry Staff
+        for ($i = 1; $i <= 3; $i++) {
+            $staff = $this->createUser(
+                "Laundry Staff $i",
+                "staff{$i}@laundry.com",
+                $main->id,
+                'Laundry Technician'
+            );
+            $staff->assignBranchRole('Laundry Staff', $main);
+        }
 
-        // Accountant (works globally but not Super Admin)
-        $accountant1 = User::firstOrCreate([
-            'email' => 'accountant@laundry.com',
-        ], [
-            'name' => 'Company Accountant',
-            'password' => bcrypt('password'),
-            'branch_id' => $branch1->id,
-            'is_active' => true,
-        ]);
-        $accountant1->assignBranchRole('Accountant', null);
+        // Driver
+        $driverUser = $this->createUser(
+            'Delivery Driver',
+            'driver@laundry.com',
+            $west->id,
+            'Delivery Driver'
+        );
+        $driverUser->assignBranchRole('Driver', $west);
+
+        // Accountant
+        $accountantUser = $this->createUser(
+            'Company Accountant',
+            'accountant@laundry.com',
+            $main->id,
+            'Accountant'
+        );
+        $accountantUser->assignBranchRole('Accountant', null);
+
+        // Inactive user example
+        $inactiveUser = $this->createUser(
+            'Former Employee',
+            'inactive@laundry.com',
+            $main->id,
+            'Former Staff',
+            false
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | HELPER METHODS
+    |--------------------------------------------------------------------------
+    */
+
+    private function createBranch($name, $code, $city, $isMain = false)
+    {
+        return Branch::firstOrCreate(
+            ['code' => $code],
+            [
+                'uuid' => Str::uuid(),
+                'name' => $name,
+                'city' => $city,
+                'is_main_branch' => $isMain,
+            ]
+        );
+    }
+
+    private function createUser($name, $email, $branchId, $jobTitle, $active = true)
+    {
+        return User::firstOrCreate(
+            ['email' => $email],
+            [
+                'uuid' => Str::uuid(),
+                'name' => $name,
+                'password' => Hash::make('password'),
+                'branch_id' => $branchId,
+                'is_active' => $active,
+                'phone' => '07' . rand(10000000, 99999999),
+                'profile_photo' => null,
+                'job_title' => $jobTitle,
+                'bio' => "$jobTitle at LaundryPro System.",
+                'hired_at' => now()->subMonths(rand(1, 36)),
+                'last_login_at' => now()->subDays(rand(0, 30)),
+                'last_login_ip' => '192.168.1.' . rand(2, 200),
+                'login_count' => rand(5, 250),
+                'preferences' => [
+                    'theme' => rand(0,1) ? 'dark' : 'light',
+                    'notifications' => true,
+                    'dashboard_layout' => 'default',
+                ],
+            ]
+        );
     }
 }

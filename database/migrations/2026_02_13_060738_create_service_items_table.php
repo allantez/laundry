@@ -1,5 +1,5 @@
 <?php
-// database/migrations/2026_02_13_060710_create_service_items_table.php
+// database/migrations/2026_02_13_060738_create_service_items_table.php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -7,40 +7,32 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('service_items', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->uuid('uuid')->unique();
 
             // Service Association
-            $table->uuid('service_id');
-            $table->foreign('service_id')
-                ->references('id')
-                ->on('services')
+            $table->foreignId('service_id')
+                ->constrained('services')
                 ->cascadeOnDelete();
 
-            // Branch Association
-            $table->uuid('branch_id')->nullable();
-            $table->foreign('branch_id')
-                ->references('id')
-                ->on('branches')
-                ->nullOnDelete();
+            // 🔴 FIX: First create the branch_id column
+            $table->unsignedBigInteger('branch_id')->nullable(); // Use unsignedBigInteger to match branches.id
 
             // Basic Information
             $table->string('name');
             $table->string('slug')->nullable();
-            $table->string('code', 50)->nullable(); // 🔴 ADD LENGTH
+            $table->string('code', 50)->nullable();
             $table->text('description')->nullable();
-            $table->string('short_description', 255)->nullable(); // 🔴 ADD LENGTH
+            $table->string('short_description', 255)->nullable();
 
-            // Item Details - 🔴 ADD LENGTH LIMITS TO ALL
-            $table->string('item_type', 50); // 🔴 LENGTH 50
-            $table->string('fabric_type', 50)->nullable(); // 🔴 LENGTH 50
-            $table->string('color', 30)->nullable(); // 🔴 LENGTH 30
-            $table->string('size', 20)->nullable(); // 🔴 LENGTH 20
+            // Item Details
+            $table->string('item_type', 50);
+            $table->string('fabric_type', 50)->nullable();
+            $table->string('color', 30)->nullable();
+            $table->string('size', 20)->nullable();
 
             // Pricing
             $table->decimal('base_price', 10, 2)->default(0);
@@ -55,10 +47,9 @@ return new class extends Migration
 
             // Inventory Integration
             $table->boolean('track_inventory')->default(false);
-            $table->uuid('inventory_item_id')->nullable();
-            $table->foreign('inventory_item_id')
-                ->references('id')
-                ->on('inventory_items')
+            $table->foreignId('inventory_item_id')
+                ->nullable()
+                ->constrained('inventory_items')
                 ->nullOnDelete();
             $table->decimal('inventory_quantity_per_unit', 10, 2)->nullable();
 
@@ -69,8 +60,8 @@ return new class extends Migration
             $table->decimal('special_handling_fee', 10, 2)->nullable();
 
             // Images
-            $table->string('icon', 100)->nullable(); // 🔴 ADD LENGTH
-            $table->string('image', 255)->nullable(); // 🔴 ADD LENGTH
+            $table->string('icon', 100)->nullable();
+            $table->string('image', 255)->nullable();
             $table->json('gallery')->nullable();
 
             // Additional Info
@@ -81,6 +72,12 @@ return new class extends Migration
             // Timestamps
             $table->timestamps();
             $table->softDeletes();
+
+            // 🔴 FIX: Add foreign key constraint AFTER column is created
+            $table->foreign('branch_id')
+                ->references('id')
+                ->on('branches')
+                ->nullOnDelete();
 
             // Indexes
             $table->index('service_id', 'si_service_idx');
@@ -94,14 +91,11 @@ return new class extends Migration
             $table->index(['service_id', 'is_popular'], 'si_service_popular_idx');
             $table->index(['branch_id', 'is_active'], 'si_branch_active_idx');
 
-            // 🔴 FIXED UNIQUE CONSTRAINT - Now within limits
+            // Unique constraint
             $table->unique(['service_id', 'item_type', 'size', 'fabric_type'], 'si_unique');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('service_items');

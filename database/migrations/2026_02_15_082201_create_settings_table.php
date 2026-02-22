@@ -8,12 +8,13 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('settings', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->uuid('uuid')->unique();
 
             $table->string('key')->index();
             $table->text('value')->nullable();
 
-            $table->uuid('branch_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('branch_id')->nullable()->constrained()->nullOnDelete();
 
             $table->timestamps();
 

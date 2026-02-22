@@ -13,10 +13,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('inventory_items', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->uuid('uuid')->unique();
 
             // Branch Association
-            $table->uuid('branch_id')
+            $table->foreignId('branch_id')
                 ->nullable()
                 ->constrained()
                 ->nullOnDelete();

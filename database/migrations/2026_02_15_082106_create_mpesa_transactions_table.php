@@ -8,7 +8,8 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('mpesa_transactions', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->uuid('uuid')->unique();
 
             $table->uuid('order_id')->nullable()->constrained()->nullOnDelete();
             $table->uuid('payment_id')->nullable()->constrained()->nullOnDelete();

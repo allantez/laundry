@@ -3,26 +3,64 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\OrderStatusLog;
+use App\Models\User;
 use App\Models\Customer;
-use App\Models\ServiceItem;
+use App\Models\Service;
+use App\Models\Branch;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Gate;
+use App\Http\Requests\StoreOrderRequest;
+use App\Http\Requests\UpdateOrderRequest;
+use Illuminate\Routing\Controller as BaseController;
 
-class OrderController extends Controller
+class OrderController extends BaseController // 🔴 EXTEND BaseController
 {
     /**
-     * Display a listing of orders with filters
+     * Constructor - Apply middleware for permissions
+     */
+    public function __construct()
+    {
+        // Apply permission middleware to methods
+        $this->middleware('permission:view orders')->only(['index', 'show']);
+        $this->middleware('permission:create orders')->only(['create', 'store']);
+        $this->middleware('permission:edit orders')->only(['edit', 'update']);
+        $this->middleware('permission:delete orders')->only(['destroy']);
+        $this->middleware('permission:process orders')->only(['updateStatus', 'assignStaff']);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | LIST ORDERS (BLADE VIEW)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Display a listing of orders (Blade view)
      */
     public function index(Request $request)
     {
-        $query = Order::with(['customer', 'items.serviceItem', 'creator', 'assignee'])
-            ->where('branch_id', Auth::user()->branch_id);
+        $user = auth()->user();
 
-        // Apply filters
+        $query = Order::with([
+            'customer',
+            'branch',
+            'items',
+            'payments'
+        ]);
+
+        // Multi-branch filtering
+        if (!$user->hasBranchRole('Super Admin', null)) {
+            $branchIds = $user->branchRoles()
+                ->whereNotNull('branch_id')
+                ->pluck('branch_id')
+                ->toArray();
+
+            $query->whereIn('branch_id', $branchIds);
+        }
+
+        // Optional filters
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
@@ -35,6 +73,10 @@ class OrderController extends Controller
             $query->where('customer_id', $request->customer_id);
         }
 
+        if ($request->filled('branch_id') && $user->hasBranchRole('Super Admin', null)) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
         if ($request->filled('date_from')) {
             $query->whereDate('order_date', '>=', $request->date_from);
         }
@@ -43,435 +85,432 @@ class OrderController extends Controller
             $query->whereDate('order_date', '<=', $request->date_to);
         }
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('order_number', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function($cq) use ($search) {
-                      $cq->where('name', 'like', "%{$search}%")
-                         ->orWhere('phone', 'like', "%{$search}%");
-                  });
-            });
-        }
+        $orders = $query
+            ->latest()
+            ->paginate(15);
 
-        // Sorting
-        $sortBy = $request->get('sort_by', 'created_at');
-        $sortOrder = $request->get('sort_order', 'desc');
-        $query->orderBy($sortBy, $sortOrder);
+        // Get filter data for dropdowns
+        $branchIds = $user->branchRoles()
+            ->whereNotNull('branch_id')
+            ->pluck('branch_id')
+            ->toArray();
 
-        $orders = $query->paginate($request->get('per_page', 15));
+        $branches = $user->hasBranchRole('Super Admin', null)
+            ? Branch::active()->get()
+            : Branch::whereIn('id', $branchIds)->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $orders
-        ]);
+        $customers = Customer::active()
+            ->when(!$user->hasBranchRole('Super Admin', null), function ($q) use ($branchIds) {
+                $q->whereIn('branch_id', $branchIds);
+            })
+            ->get();
+
+        return view('orders.index', compact('orders', 'branches', 'customers'));
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | CREATE ORDER (BLADE VIEW)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Show form to create a new order
+     */
+    public function create()
+    {
+        // 🔴 FIX: Use Gate::authorize() instead of $this->authorize()
+        Gate::authorize('create', Order::class);
+
+        $user = auth()->user();
+        $currentBranch = $user->current_branch;
+
+        // Get customers from current branch
+        $customers = Customer::active()
+            ->when($currentBranch, function ($q) use ($currentBranch) {
+                $q->where('branch_id', $currentBranch->id);
+            })
+            ->orderBy('first_name')
+            ->get();
+
+        // Get services available in current branch
+        $services = Service::active()
+            ->with('serviceItems')
+            ->when($currentBranch, function ($q) use ($currentBranch) {
+                $q->where(function ($query) use ($currentBranch) {
+                    $query->where('branch_id', $currentBranch->id)
+                        ->orWhereNull('branch_id');
+                });
+            })
+            ->orderBy('name')
+            ->get();
+
+        return view('orders.create', compact('customers', 'services'));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | STORE ORDER
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Store a newly created order
      */
-    public function store(Request $request)
+    public function store(StoreOrderRequest $request)
     {
-        $validated = $request->validate([
-            'customer_id' => 'required|exists:customers,id',
-            'order_type' => 'required|in:pickup,delivery,walk_in',
-            'service_type' => 'required|in:regular,express',
-            'items' => 'required|array|min:1',
-            'items.*.service_item_id' => 'required|exists:service_items,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_price' => 'required|numeric|min:0',
-            'items.*.special_instructions' => 'nullable|string|max:255',
-            'requested_pickup_date' => 'nullable|date|after_or_equal:today',
-            'requested_delivery_date' => 'nullable|date|after_or_equal:requested_pickup_date',
-            'delivery_address' => 'nullable|string|max:500',
-            'delivery_contact_name' => 'nullable|string|max:100',
-            'delivery_contact_phone' => 'nullable|string|max:20',
-            'delivery_instructions' => 'nullable|string|max:500',
-            'discount_code' => 'nullable|string|max:50',
-            'discount_type' => 'nullable|in:percentage,fixed',
-            'discount_value' => 'nullable|numeric|min:0',
-            'special_instructions' => 'nullable|string|max:1000',
-        ]);
+        Gate::authorize('create', Order::class);
+
+        DB::beginTransaction();
 
         try {
-            DB::beginTransaction();
+            $data = $request->validated();
 
-            // Generate order number
-            $orderNumber = $this->generateOrderNumber();
+            // Set branch from current context
+            $data['branch_id'] = auth()->user()->current_branch?->id
+                ?? auth()->user()->branch_id;
 
-            // Calculate totals
-            $totals = $this->calculateOrderTotals($validated['items'], $validated);
+            $data['created_by'] = auth()->id();
+            $data['order_number'] = Order::generateOrderNumber();
 
-            // Create order
-            $order = Order::create([
-                'uuid' => Str::uuid(),
-                'order_number' => $orderNumber,
-                'branch_id' => Auth::user()->branch_id,
-                'customer_id' => $validated['customer_id'],
-                'created_by' => Auth::id(),
-                'status' => 'pending',
-                'payment_status' => 'pending',
-                'order_type' => $validated['order_type'],
-                'service_type' => $validated['service_type'],
-                'order_date' => now(),
-                'requested_pickup_date' => $validated['requested_pickup_date'] ?? null,
-                'requested_delivery_date' => $validated['requested_delivery_date'] ?? null,
-                'promised_completion_date' => $this->calculateCompletionDate($validated['service_type']),
-                'subtotal' => $totals['subtotal'],
-                'discount_amount' => $totals['discount'],
-                'tax_amount' => $totals['tax'],
-                'delivery_fee' => $totals['delivery_fee'],
-                'total_amount' => $totals['total'],
-                'balance_due' => $totals['total'],
-                'discount_code' => $validated['discount_code'] ?? null,
-                'discount_type' => $validated['discount_type'] ?? null,
-                'discount_value' => $validated['discount_value'] ?? 0,
-                'delivery_address' => $validated['delivery_address'] ?? null,
-                'delivery_contact_name' => $validated['delivery_contact_name'] ?? null,
-                'delivery_contact_phone' => $validated['delivery_contact_phone'] ?? null,
-                'delivery_instructions' => $validated['delivery_instructions'] ?? null,
-                'special_instructions' => $validated['special_instructions'] ?? null,
-            ]);
+            $order = Order::create($data);
 
-            // Create order items
-            foreach ($validated['items'] as $item) {
-                $serviceItem = ServiceItem::find($item['service_item_id']);
-
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'service_item_id' => $item['service_item_id'],
-                    'service_name' => $serviceItem->name,
+            // Create Order Items
+            foreach ($request->items as $item) {
+                $order->items()->create([
+                    'service_id' => $item['service_id'],
+                    'service_item_id' => $item['service_item_id'] ?? null,
+                    'name' => $item['name'],
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
                     'subtotal' => $item['quantity'] * $item['unit_price'],
-                    'special_instructions' => $item['special_instructions'] ?? null,
                 ]);
             }
 
-            // Log initial status
-            OrderStatusLog::create([
-                'order_id' => $order->id,
-                'status' => 'pending',
-                'notes' => 'Order created',
-                'changed_by' => Auth::id(),
-            ]);
+            // Calculate totals
+            $order->updateTotals();
 
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Order created successfully',
-                'data' => $order->load(['customer', 'items.serviceItem', 'statusLogs'])
-            ], 201);
-
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('success', 'Order created successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create order',
-                'error' => $e->getMessage()
-            ], 500);
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Order creation failed: ' . $e->getMessage());
         }
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | SHOW ORDER (BLADE VIEW)
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Display the specified order
      */
     public function show(Order $order)
     {
-        // Check if user can view this order (same branch or admin)
-        if ($order->branch_id !== Auth::user()->branch_id && !Auth::user()->hasRole('admin')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized'
-            ], 403);
+        Gate::authorize('view', $order);
+
+        $order->load([
+            'customer',
+            'branch',
+            'items.service',
+            'items.serviceItem',
+            'payments' => function ($q) {
+                $q->latest();
+            },
+            'statusLogs' => function ($q) {
+                $q->with('changedBy')->latest();
+            },
+            'createdBy',
+            'assignedTo'
+        ]);
+
+        return view('orders.show', compact('order'));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | EDIT ORDER (BLADE VIEW)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Show form to edit order
+     */
+    public function edit(Order $order)
+    {
+        Gate::authorize('update', $order);
+
+        $user = auth()->user();
+
+        // Only allow editing if order is pending or processing
+        if (!in_array($order->status, ['pending', 'processing'])) {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'Cannot edit order with status: ' . $order->status);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $order->load([
-                'customer',
-                'items.serviceItem.service',
-                'statusLogs.changedBy',
-                'payments',
-                'invoice',
-                'creator',
-                'assignee'
-            ])
-        ]);
+        $customers = Customer::active()
+            ->when($order->branch_id, function ($q) use ($order) {
+                $q->where('branch_id', $order->branch_id);
+            })
+            ->orderBy('first_name')
+            ->get();
+
+        $services = Service::active()
+            ->with('serviceItems')
+            ->when($order->branch_id, function ($q) use ($order) {
+                $q->where(function ($query) use ($order) {
+                    $query->where('branch_id', $order->branch_id)
+                        ->orWhereNull('branch_id');
+                });
+            })
+            ->orderBy('name')
+            ->get();
+
+        $order->load('items');
+
+        return view('orders.edit', compact('order', 'customers', 'services'));
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | UPDATE ORDER
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Update the specified order
      */
-    public function update(Request $request, Order $order)
+    public function update(UpdateOrderRequest $request, Order $order)
     {
-        // Cannot edit completed or cancelled orders
-        if (in_array($order->status, ['completed', 'cancelled'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot edit completed or cancelled orders'
-            ], 422);
+        Gate::authorize('update', $order);
+
+        // Only allow update if order is pending or processing
+        if (!in_array($order->status, ['pending', 'processing'])) {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'Cannot update order with status: ' . $order->status);
         }
 
-        $validated = $request->validate([
-            'customer_id' => 'sometimes|exists:customers,id',
-            'order_type' => 'sometimes|in:pickup,delivery,walk_in',
-            'service_type' => 'sometimes|in:regular,express',
-            'requested_pickup_date' => 'nullable|date',
-            'requested_delivery_date' => 'nullable|date',
-            'delivery_address' => 'nullable|string|max:500',
-            'delivery_contact_name' => 'nullable|string|max:100',
-            'delivery_contact_phone' => 'nullable|string|max:20',
-            'special_instructions' => 'nullable|string|max:1000',
-        ]);
+        DB::beginTransaction();
 
         try {
-            $order->update([
-                ...$validated,
-                'updated_by' => Auth::id(),
-            ]);
+            $data = $request->validated();
+            $data['updated_by'] = auth()->id();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Order updated successfully',
-                'data' => $order->fresh()
-            ]);
+            $order->update($data);
+
+            // If items are being updated
+            if ($request->has('items') && !empty($request->items)) {
+                $order->items()->delete();
+
+                foreach ($request->items as $item) {
+                    $order->items()->create([
+                        'service_id' => $item['service_id'],
+                        'service_item_id' => $item['service_item_id'] ?? null,
+                        'name' => $item['name'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['unit_price'],
+                        'subtotal' => $item['quantity'] * $item['unit_price'],
+                    ]);
+                }
+            }
+
+            $order->updateTotals();
+
+            DB::commit();
+
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('success', 'Order updated successfully.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update order',
-                'error' => $e->getMessage()
-            ], 500);
+            DB::rollBack();
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Order update failed: ' . $e->getMessage());
         }
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | UPDATE STATUS
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Update order status
      */
     public function updateStatus(Request $request, Order $order)
     {
-        $validated = $request->validate([
+        Gate::authorize('process', $order);
+
+        $request->validate([
             'status' => 'required|in:pending,processing,ready,delivered,completed,cancelled',
-            'notes' => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:500'
         ]);
-
-        $oldStatus = $order->status;
-        $newStatus = $validated['status'];
-
-        // Validate status transition
-        $validTransitions = [
-            'pending' => ['processing', 'cancelled'],
-            'processing' => ['ready', 'cancelled'],
-            'ready' => ['delivered', 'cancelled'],
-            'delivered' => ['completed'],
-            'completed' => [],
-            'cancelled' => [],
-        ];
-
-        if (!in_array($newStatus, $validTransitions[$oldStatus])) {
-            return response()->json([
-                'success' => false,
-                'message' => "Cannot transition from {$oldStatus} to {$newStatus}"
-            ], 422);
-        }
 
         try {
-            DB::beginTransaction();
+            $order->updateStatus(
+                $request->status,
+                $request->notes
+            );
 
-            $updateData = [
-                'status' => $newStatus,
-                'status_updated_at' => now(),
-                'status_updated_by' => Auth::id(),
-            ];
-
-            // Set completion date if completed
-            if ($newStatus === 'completed') {
-                $updateData['completed_at'] = now();
-            }
-
-            $order->update($updateData);
-
-            // Log status change
-            OrderStatusLog::create([
-                'order_id' => $order->id,
-                'status' => $newStatus,
-                'previous_status' => $oldStatus,
-                'notes' => $validated['notes'],
-                'changed_by' => Auth::id(),
-            ]);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Status updated successfully',
-                'data' => [
-                    'order' => $order->fresh(),
-                    'previous_status' => $oldStatus,
-                    'new_status' => $newStatus
-                ]
-            ]);
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('success', 'Order status updated to: ' . ucfirst($request->status));
         } catch (\Exception $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update status',
-                'error' => $e->getMessage()
-            ], 500);
+            return redirect()
+                ->back()
+                ->with('error', 'Status update failed: ' . $e->getMessage());
         }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | ASSIGN STAFF
+    |--------------------------------------------------------------------------
+    */
+
     /**
-     * Assign order to staff
+     * Assign staff to order
      */
-    public function assign(Request $request, Order $order)
+    public function assignStaff(Request $request, Order $order)
     {
-        $validated = $request->validate([
-            'assigned_to' => 'required|exists:users,id',
+        Gate::authorize('assign orders', $order);
+
+        $request->validate([
+            'staff_id' => 'required|exists:users,id'
         ]);
 
-        $order->update([
-            'assigned_to' => $validated['assigned_to'],
-            'updated_by' => Auth::id(),
-        ]);
+        try {
+            /** @var \App\Models\User $staff */
+            $staff = User::findOrFail($request->staff_id);
+            $order->assignTo($staff);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Order assigned successfully',
-            'data' => $order->fresh()->load('assignee')
-        ]);
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('success', 'Staff assigned successfully.');
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->with('error', 'Staff assignment failed: ' . $e->getMessage());
+        }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | PRINT INVOICE
+    |--------------------------------------------------------------------------
+    */
+
     /**
-     * Remove the specified order (soft delete)
+     * Print order invoice
+     */
+    public function printInvoice(Order $order)
+    {
+        Gate::authorize('view', $order);
+
+        $order->load(['customer', 'items', 'branch']);
+
+        return view('orders.invoice', compact('order'));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | DELETE ORDER
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Remove the specified order
      */
     public function destroy(Order $order)
     {
-        // Only allow deletion of pending orders
-        if ($order->status !== 'pending') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Only pending orders can be deleted'
-            ], 422);
-        }
+        Gate::authorize('delete', $order);
 
         try {
+            // Check if order can be deleted
+            if ($order->payments()->exists()) {
+                return redirect()
+                    ->route('orders.show', $order)
+                    ->with('error', 'Cannot delete order with existing payments.');
+            }
+
             $order->delete();
+
+            return redirect()
+                ->route('orders.index')
+                ->with('success', 'Order deleted successfully.');
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->with('error', 'Order deletion failed: ' . $e->getMessage());
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | API METHODS (Keep these for AJAX calls)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * API: Get order details for AJAX
+     */
+    public function apiShow(Order $order): JsonResponse
+    {
+        Gate::authorize('view', $order);
+
+        $order->load([
+            'customer',
+            'branch',
+            'items.service',
+            'items.serviceItem',
+            'payments'
+        ]);
+
+        return response()->json($order);
+    }
+
+    /**
+     * API: Update order status (for AJAX)
+     */
+    public function apiUpdateStatus(Request $request, Order $order): JsonResponse
+    {
+        Gate::authorize('process', $order);
+
+        $request->validate([
+            'status' => 'required|string',
+            'notes' => 'nullable|string'
+        ]);
+
+        try {
+            $order->updateStatus(
+                $request->status,
+                $request->notes
+            );
 
             return response()->json([
                 'success' => true,
-                'message' => 'Order deleted successfully'
+                'message' => 'Order status updated successfully.',
+                'data' => $order->fresh()
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete order',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Status update failed: ' . $e->getMessage()
+            ], 400);
         }
-    }
-
-    /**
-     * Get order statistics for dashboard
-     */
-    public function statistics()
-    {
-        $branchId = Auth::user()->branch_id;
-        $today = now()->startOfDay();
-
-        $stats = [
-            'today' => [
-                'total' => Order::where('branch_id', $branchId)->whereDate('order_date', $today)->count(),
-                'pending' => Order::where('branch_id', $branchId)->whereDate('order_date', $today)->where('status', 'pending')->count(),
-                'processing' => Order::where('branch_id', $branchId)->whereDate('order_date', $today)->where('status', 'processing')->count(),
-                'ready' => Order::where('branch_id', $branchId)->whereDate('order_date', $today)->where('status', 'ready')->count(),
-                'revenue' => Order::where('branch_id', $branchId)->whereDate('order_date', $today)->sum('total_amount'),
-            ],
-            'this_week' => [
-                'total' => Order::where('branch_id', $branchId)->whereBetween('order_date', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-                'revenue' => Order::where('branch_id', $branchId)->whereBetween('order_date', [now()->startOfWeek(), now()->endOfWeek()])->sum('total_amount'),
-            ],
-            'this_month' => [
-                'total' => Order::where('branch_id', $branchId)->whereMonth('order_date', now()->month)->count(),
-                'revenue' => Order::where('branch_id', $branchId)->whereMonth('order_date', now()->month)->sum('total_amount'),
-            ],
-            'by_status' => Order::where('branch_id', $branchId)
-                ->selectRaw('status, COUNT(*) as count')
-                ->groupBy('status')
-                ->pluck('count', 'status'),
-        ];
-
-        return response()->json([
-            'success' => true,
-            'data' => $stats
-        ]);
-    }
-
-    /**
-     * Generate unique order number
-     */
-    private function generateOrderNumber(): string
-    {
-        $prefix = 'ORD-' . now()->format('Y');
-        $lastOrder = Order::where('order_number', 'like', $prefix . '%')
-            ->orderBy('id', 'desc')
-            ->first();
-
-        $number = $lastOrder ? (int)substr($lastOrder->order_number, -4) + 1 : 1;
-        return $prefix . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
-    }
-
-    /**
-     * Calculate order totals
-     */
-    private function calculateOrderTotals(array $items, array $data): array
-    {
-        $subtotal = 0;
-
-        foreach ($items as $item) {
-            $subtotal += $item['quantity'] * $item['unit_price'];
-        }
-
-        // Calculate discount
-        $discount = 0;
-        if (!empty($data['discount_type']) && !empty($data['discount_value'])) {
-            if ($data['discount_type'] === 'percentage') {
-                $discount = $subtotal * ($data['discount_value'] / 100);
-            } else {
-                $discount = $data['discount_value'];
-            }
-        }
-
-        // Calculate tax (16% VAT)
-        $taxableAmount = $subtotal - $discount;
-        $tax = $taxableAmount * 0.16;
-
-        // Delivery/pickup fees
-        $deliveryFee = 0;
-        if (($data['order_type'] ?? '') === 'delivery') {
-            $deliveryFee = 200; // Configurable
-        }
-
-        $total = $taxableAmount + $tax + $deliveryFee;
-
-        return [
-            'subtotal' => round($subtotal, 2),
-            'discount' => round($discount, 2),
-            'tax' => round($tax, 2),
-            'delivery_fee' => round($deliveryFee, 2),
-            'total' => round($total, 2),
-        ];
-    }
-
-    /**
-     * Calculate promised completion date based on service type
-     */
-    private function calculateCompletionDate(string $serviceType): \Carbon\Carbon
-    {
-        $hours = $serviceType === 'express' ? 24 : 72;
-        return now()->addHours($hours);
     }
 }

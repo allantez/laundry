@@ -13,10 +13,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('suppliers', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->uuid('uuid')->unique();
 
             // Branch Association (which branch does this supplier serve)
-            $table->uuid('branch_id')
+            $table->foreignId('branch_id')
                 ->nullable()
                 ->constrained()
                 ->nullOnDelete();

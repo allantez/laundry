@@ -1,5 +1,4 @@
 <?php
-// database/migrations/2026_02_13_060800_create_orders_table.php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -7,63 +6,82 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('orders', function (Blueprint $table) {
-            $table->uuid('uuid')->unique();
 
-            // Order Identification
-            $table->string('order_number')->unique(); // Human-readable order number (e.g., ORD-2026-0001)
-            $table->string('invoice_number')->unique()->nullable(); // Invoice number
+            // Primary Keys
+            $table->id(); // Fast joins
+            $table->uuid('uuid')->unique(); // Public reference
 
-            // Branch Association (CRITICAL)
-            $table->uuid('branch_id')
+            // Branch (INT foreign key)
+            $table->foreignId('branch_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
-            // Customer Association
-            $table->uuid('customer_id')
-                ->nullable()
-                ->constrained()
+            // Order Numbering
+            $table->string('order_number')->unique();
+            $table->string('invoice_number')->nullable()->unique();
+
+            // Sequence System (for formatted numbers)
+            $table->unsignedBigInteger('sequence');
+            $table->year('year');
+
+            // Customer (foreign key)
+            $table->unsignedBigInteger('customer_id')->nullable();
+            $table->foreign('customer_id')
+                ->references('id')
+                ->on('customers')
                 ->nullOnDelete();
 
             // Staff Associations
-            $table->uuid('created_by')
-                ->constrained('users');
+            $table->unsignedBigInteger('created_by');
+            $table->foreign('created_by')
+                ->references('id')
+                ->on('users')
+                ->cascadeOnDelete();
 
-            $table->uuid('updated_by')
-                ->nullable()
-                ->constrained('users');
+            // 🔴 FIXED: Changed from "unisgnedBigInteger" to "unsignedBigInteger"
+            $table->unsignedBigInteger('updated_by')->nullable();
+            $table->foreign('updated_by')
+                ->references('id')
+                ->on('users')
+                ->nullOnDelete();
 
-            $table->uuid('assigned_to') // Staff assigned to process this order
-                ->nullable()
-                ->constrained('users')
+            $table->unsignedBigInteger('assigned_to')->nullable();
+            $table->foreign('assigned_to')
+                ->references('id')
+                ->on('users')
+                ->nullOnDelete();
+
+            $table->unsignedBigInteger('status_updated_by')->nullable();
+            $table->foreign('status_updated_by')
+                ->references('id')
+                ->on('users')
                 ->nullOnDelete();
 
             // Order Status
-            $table->string('status')->default('pending'); // pending, processing, ready, delivered, cancelled, completed
+            $table->string('status')->default('pending');
             $table->timestamp('status_updated_at')->nullable();
-            $table->uuid('status_updated_by')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
 
-            // Order Details
-            $table->enum('order_type', ['pickup', 'delivery', 'walk_in'])->default('walk_in');
-            $table->enum('service_type', ['regular', 'express'])->default('regular');
-            $table->enum('payment_status', ['pending', 'paid', 'partially_paid', 'refunded'])->default('pending');
+            // Order Types
+            $table->enum('order_type', ['pickup', 'delivery', 'walk_in'])
+                ->default('walk_in');
 
-            // Dates & Times
-            $table->datetime('order_date')->useCurrent();
-            $table->datetime('requested_pickup_date')->nullable();
-            $table->datetime('requested_delivery_date')->nullable();
-            $table->datetime('actual_pickup_date')->nullable();
-            $table->datetime('actual_delivery_date')->nullable();
-            $table->datetime('promised_completion_date')->nullable();
-            $table->datetime('completed_at')->nullable();
+            $table->enum('service_type', ['regular', 'express'])
+                ->default('regular');
+
+            $table->enum('payment_status', ['pending', 'paid', 'partially_paid', 'refunded'])
+                ->default('pending');
+
+            // Dates
+            $table->dateTime('order_date')->useCurrent();
+            $table->dateTime('requested_pickup_date')->nullable();
+            $table->dateTime('requested_delivery_date')->nullable();
+            $table->dateTime('actual_pickup_date')->nullable();
+            $table->dateTime('actual_delivery_date')->nullable();
+            $table->dateTime('promised_completion_date')->nullable();
+            $table->dateTime('completed_at')->nullable();
 
             // Financial Summary
             $table->decimal('subtotal', 12, 2)->default(0);
@@ -85,7 +103,7 @@ return new class extends Migration
             $table->decimal('tax_rate', 5, 2)->nullable();
             $table->string('tax_description')->nullable();
 
-            // Delivery/Pickup Address (if different from customer address)
+            // Delivery / Pickup Details
             $table->text('delivery_address')->nullable();
             $table->string('delivery_contact_name')->nullable();
             $table->string('delivery_contact_phone')->nullable();
@@ -96,67 +114,58 @@ return new class extends Migration
             $table->string('pickup_contact_phone')->nullable();
             $table->text('pickup_instructions')->nullable();
 
-            // Special Instructions
+            // Notes
             $table->text('customer_notes')->nullable();
             $table->text('staff_notes')->nullable();
-            $table->json('special_instructions')->nullable(); // JSON for structured instructions
+            $table->json('metadata')->nullable();
+            $table->json('tags')->nullable();
 
-            // Order Metadata
-            $table->json('metadata')->nullable(); // Flexible storage for extra data
-            $table->json('tags')->nullable(); // For categorization/filtering
-
-            // Flags
+            // Flags & Approval
             $table->boolean('is_urgent')->default(false);
             $table->boolean('is_insured')->default(false);
             $table->boolean('requires_approval')->default(false);
             $table->boolean('is_approved')->default(false);
-            $table->uuid('approved_by')->nullable()->constrained('users')->nullOnDelete();
+
+            $table->unsignedBigInteger('approved_by')->nullable();
+            $table->foreign('approved_by')
+                ->references('id')
+                ->on('users')
+                ->nullOnDelete();
+
             $table->timestamp('approved_at')->nullable();
 
             $table->boolean('is_flagged')->default(false);
             $table->string('flag_reason')->nullable();
-            $table->uuid('flagged_by')->nullable()->constrained('users')->nullOnDelete();
 
-            // Audit Trail
-            $table->json('status_history')->nullable(); // Track status changes
-            $table->json('payment_history')->nullable(); // Track payment history
+            $table->unsignedBigInteger('flagged_by')->nullable();
+            $table->foreign('flagged_by')
+                ->references('id')
+                ->on('users')
+                ->nullOnDelete();
 
             // Timestamps
             $table->timestamps();
             $table->softDeletes();
 
-            // Indexes for performance
-            $table->index('order_number');
-            $table->index('invoice_number');
-            $table->index('branch_id');
-            $table->index('customer_id');
-            $table->index('created_by');
-            $table->index('assigned_to');
-            $table->index('status');
-            $table->index('payment_status');
-            $table->index('order_type');
-            $table->index('service_type');
-            $table->index('order_date');
-            $table->index('requested_delivery_date');
-            $table->index('actual_delivery_date');
-            $table->index('completed_at');
+            /*
+            |--------------------------------------------------------------------------
+            | PERFORMANCE INDEXES
+            |--------------------------------------------------------------------------
+            */
+
+            // Composite unique sequence per branch per year
+            $table->unique(['branch_id', 'year', 'sequence']);
+
+            // Reporting & filtering
             $table->index(['branch_id', 'status']);
             $table->index(['branch_id', 'order_date']);
+            $table->index(['branch_id', 'payment_status']);
             $table->index(['customer_id', 'status']);
             $table->index(['status', 'payment_status']);
-            $table->index('is_urgent');
-            $table->index('is_flagged');
-            $table->index('deleted_at');
-
-            // Composite indexes for reporting
-            $table->index(['branch_id', 'status', 'order_date']);
-            $table->index(['branch_id', 'payment_status', 'order_date']);
+            $table->index('completed_at');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('orders');

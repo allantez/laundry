@@ -13,7 +13,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('expenses', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->uuid('uuid')->unique();
 
             // Expense Identification
             $table->string('expense_number')->unique(); // Human-readable expense number
@@ -21,7 +22,7 @@ return new class extends Migration
             $table->string('invoice_number')->nullable();
 
             // Branch Association (CRITICAL)
-            $table->uuid('branch_id')
+            $table->foreignId('branch_id')
                 ->constrained()
                 ->cascadeOnDelete();
 

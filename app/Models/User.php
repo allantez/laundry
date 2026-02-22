@@ -14,12 +14,12 @@ use App\Traits\HasBranchRoles;
 use App\Models\Branch;
 use App\Models\UserBranchRole;
 use Illuminate\Support\Collection;
-use App\Traits\HasUuid;
-use Illuminate\Testing\Fluent\Concerns\Has;
+use Illuminate\Support\Str;
+
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasRoles, HasBranchRoles, HasUuid;
+    use HasFactory, Notifiable, HasRoles, HasBranchRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -27,11 +27,21 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
+        'uuid',
         'name',
         'email',
         'password',
         'branch_id',
         'is_active',
+        'phone',
+        'profile_photo',
+        'job_title',
+        'bio',
+        'hired_at',
+        'last_login_at',
+        'last_login_ip',
+        'login_count',
+        'preferences',
     ];
 
     /**
@@ -45,7 +55,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * The attributes that should be cast.
      *
      * @return array<string, string>
      */
@@ -55,7 +65,48 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'hired_at' => 'datetime',
+            'last_login_at' => 'datetime',
+            'login_count' => 'integer',
+            'preferences' => 'json',
         ];
+    }
+
+    /**
+     * The "booted" method of the model
+     */
+    protected static function booted()
+    {
+        parent::booted();
+
+        static::addGlobalScope('branch', function ($builder) {
+            // Skip if not running in console
+            if (app()->runningInConsole()) {
+                return;
+            }
+
+            /** @var \App\Models\User|null $user */
+            $user = auth()->user();
+
+            if (!$user) {
+                return;
+            }
+
+            // Skip if user doesn't have the branchRoles method
+            if (!method_exists($user, 'branchRoles') || !method_exists($user, 'hasBranchRole')) {
+                return;
+            }
+
+            if ($user && !$user->hasBranchRole('Super Admin', null)) {
+                $branchIds = $user->branchRoles()
+                    ->whereNotNull('branch_id')
+                    ->pluck('branch_id');
+
+                if ($branchIds->isNotEmpty()) {
+                    $builder->whereIn('branch_id', $branchIds);
+                }
+            }
+        });
     }
 
     /**
@@ -368,42 +419,5 @@ class User extends Authenticatable
         }
 
         return false;
-    }
-
-    /**
-     * The "booted" method of the model
-     */
-    protected static function booted()
-    {
-        parent::booted();
-
-        static::addGlobalScope('branch', function ($builder) {
-            // Skip if not running in console
-            if (app()->runningInConsole()) {
-                return;
-            }
-
-            /** @var \App\Models\User|null $user */
-            $user = auth()->user();
-
-            if (!$user) {
-                return;
-            }
-
-            // Skip if user doesn't have the branchRoles method
-            if (!method_exists($user, 'branchRoles') || !method_exists($user, 'hasBranchRole')) {
-                return;
-            }
-
-            if ($user && !$user->hasBranchRole('Super Admin', null)) {
-                $branchIds = $user->branchRoles()
-                    ->whereNotNull('branch_id')
-                    ->pluck('branch_id');
-
-                if ($branchIds->isNotEmpty()) {
-                    $builder->whereIn('branch_id', $branchIds);
-                }
-            }
-        });
     }
 }

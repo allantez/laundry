@@ -15,10 +15,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Traits\HasUuid;
 
 class Customer extends Model
 {
-    use HasFactory, SoftDeletes, Notifiable;
+    use HasFactory, SoftDeletes, Notifiable, HasUuid;
 
     /**
      * Mass Assignable

@@ -9,7 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('payments', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->uuid('uuid')->unique();
 
             /**
              * Identification
@@ -29,7 +30,7 @@ return new class extends Migration
                 ->constrained()
                 ->nullOnDelete();
 
-            $table->uuid('branch_id')
+            $table->foreignId('branch_id')
                 ->constrained()
                 ->cascadeOnDelete();
 

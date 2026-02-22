@@ -11,7 +11,7 @@ return new class extends Migration {
             $table->id();
             $table->uuid('uuid')->unique();
 
-            $table->uuid('branch_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
             $table->uuid('order_id')->constrained()->cascadeOnDelete();
 
             $table->string('invoice_number')->unique();

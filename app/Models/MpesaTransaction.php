@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasUuid;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class MpesaTransaction extends Model
 {
+    use HasUuid, SoftDeletes;
+    
     protected $fillable = [
         'order_id',
         'payment_id',

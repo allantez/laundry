@@ -13,7 +13,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('customer_feedback', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->uuid('uuid')->unique();
 
             // Feedback Identification
             $table->string('feedback_number')->unique(); // Human-readable feedback number
@@ -28,7 +29,7 @@ return new class extends Migration
                 ->constrained()
                 ->nullOnDelete();
 
-            $table->uuid('branch_id')
+            $table->foreignId('branch_id')
                 ->constrained()
                 ->cascadeOnDelete();
 

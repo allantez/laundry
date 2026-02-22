@@ -13,7 +13,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('order_items', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
+            $table->uuid('uuid')->unique();
 
             // Order Association
             $table->uuid('order_id')
@@ -32,7 +33,7 @@ return new class extends Migration
                 ->nullOnDelete();
 
             // Branch Association (for reporting)
-            $table->uuid('branch_id')
+            $table->foreignId('branch_id')
                 ->nullable()
                 ->constrained()
                 ->nullOnDelete();

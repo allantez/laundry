@@ -13,12 +13,12 @@ return new class extends Migration
             $table->id();
 
             // User assignment (who)
-            $table->uuid('user_id')
+            $table->foreignId('user_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
             // Branch assignment (where)
-            $table->uuid('branch_id')
+            $table->foreignId('branch_id')
                 ->nullable() // NULL = Global/Super Admin access
                 ->constrained()
                 ->cascadeOnDelete();
